@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema RH Portable</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{--bg:#f3f5fb;--card:#fff;--txt:#1f2937;--muted:#6b7280;--pri:#2563eb;--ok:#10b981;--warn:#f59e0b;--danger:#ef4444;--bd:#d1d5db}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;background:var(--bg);color:var(--txt)}
+    .container{max-width:1280px;margin:0 auto;padding:16px}.card{background:var(--card);border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+    h1,h2,h3{margin:0 0 12px}.row{display:flex;gap:10px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px}
+    @media(max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(180px,1fr))}} @media(max-width:640px){.grid{grid-template-columns:1fr}}
+    label{display:block;font-weight:600;font-size:.9rem;margin-bottom:6px} input,select,textarea,button{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;font-size:.9rem}
+    input:disabled,select:disabled{background:#f9fafb;color:#6b7280} textarea{min-height:80px;resize:vertical}
+    button{cursor:pointer;background:#fff}.btn{background:var(--pri);color:#fff;border-color:var(--pri)}.btn.secondary{background:#111827;border-color:#111827}.btn.success{background:var(--ok);border-color:var(--ok)}
+    .menu{display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:10px}@media(max-width:800px){.menu{grid-template-columns:1fr 1fr}}@media(max-width:500px){.menu{grid-template-columns:1fr}}
+    .hidden{display:none!important}.muted{color:var(--muted)} .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.toolbar > *{flex:1;min-width:130px}
+    table{width:100%;border-collapse:collapse;font-size:.85rem} th,td{border:1px solid #e5e7eb;padding:7px;vertical-align:top} th{background:#f9fafb;position:sticky;top:0;z-index:1}
+    tr.selected{outline:2px solid var(--pri)} .badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.75rem}
+    .pagination{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.pagination button{width:auto;padding:8px 10px}.disabled{opacity:.5;pointer-events:none}
+    .section{margin-top:14px}.filters input{width:100%;padding:6px}.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Sistema RH Portable</h1>
+  <div id="app"></div>
+</div>
+<script>
+const SHEETS={VAC:'BD_Vacancies',EMP:'BD_Employees',VAC_CATS:['CAT_Positions','CAT_Status','CAT_Locations','CAT_Areas','CAT_Departments','CAT_OpeningReasons','CAT_OperationalType','CAT_HRResponsible'],EMP_CATS:['CAT_EmployeeStatus','CAT_EmployeePositions','CAT_EmployeeDepartments','CAT_EmployeeAreas','CAT_TerminationReasons','CAT_EmployeeLocations','CAT_ForaneoCorp','CAT_EmployeeLevels']};
+const VAC_COLS=['IDV','PUESTO','STATUS','UBICACION','AREA','DEPARTAMENTO','JEFE_DIRECTO','MOTIVO_APERTURA','FECHA_INICIO','FECHA_CIERRE','TIEMPO_TRANSCURRIDO','ANIO','MES','OP_ADMON','RESPONSABLE_RH','COMENTARIOS','COMENTARIOS2'];
+const EMP_COLS=['ID_EMPLOYEE','EMPLOYEE_NUMBER','STATUS','NOMBRE_COMPLETO','PUESTO','FECHA_INGRESO','FECHA_BAJA','DEPARTAMENTO','AREA','ANIO_BAJA','CURP','GENERO','ANIO_NACIMIENTO','GENERACION','MOTIVO_BAJA','COMENTARIOS','FINIQUITO_NOMINA','FINIQUITO_ASIMILADO','FINIQUITO_TOTAL','UBICACION','FORANEO_CORP','NIVEL','DIAS_PERM'];
+let db={}; let selectedFileName=''; let selected={vac:null,emp:null};
+const parseDate=v=>{if(!v) return null; if(v instanceof Date) return v; const d=new Date(v); return isNaN(d)?null:d;};
+const dateOnly=d=> d?new Date(d.getFullYear(),d.getMonth(),d.getDate()):null; const today=()=>dateOnly(new Date());
+const daysBetween=(a,b)=>{if(!a||!b) return ''; return Math.max(0,Math.round((dateOnly(b)-dateOnly(a))/86400000));};
+const toISO=d=>{const x=parseDate(d); return x?`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`:''};
+const calcGeneration=y=> y>=2013?'Generación Alpha':y>=1997?'Generación Z':y>=1981?'Millennial':y>=1965?'Generación X':y>=1946?'Baby Boomer':'';
+function ensureSchema(){const all=[SHEETS.VAC,...SHEETS.VAC_CATS,SHEETS.EMP,...SHEETS.EMP_CATS]; for(const s of all){if(!db[s]) db[s]=[]} db[SHEETS.VAC]=db[SHEETS.VAC].map(r=>objFromCols(VAC_COLS,r)); db[SHEETS.EMP]=db[SHEETS.EMP].map(r=>objFromCols(EMP_COLS,r));}
+const objFromCols=(cols,r)=>{const o={}; cols.forEach(c=>o[c]=r[c]??''); return o;};
+const uniqueValues=sheet=>[...new Set((db[sheet]||[]).map(r=>String(r.VALUE||r.value||Object.values(r)[0]||'').trim()).filter(Boolean))];
+function boot(){renderFileScreen();}
+function renderFileScreen(){app.innerHTML=`<div class='card'><h2>1) Seleccionar archivo Excel (.xlsx)</h2><input id='file' type='file' accept='.xlsx'/><p class='muted'>Puedes cargar uno existente o iniciar vacío.</p><div class='row'><button class='btn' id='load'>Cargar</button><button id='new'>Iniciar nuevo</button></div></div>`;
+file.onchange=e=>selectedFileName=e.target.files[0]?.name||'';
+load.onclick=()=>{const f=file.files[0]; if(!f) return alert('Selecciona un archivo .xlsx'); const reader=new FileReader(); reader.onload=e=>{const wb=XLSX.read(e.target.result,{type:'array'}); db={}; wb.SheetNames.forEach(n=>db[n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''})); ensureSchema(); renderMenu();}; reader.readAsArrayBuffer(f)};
+new.onclick=()=>{db={}; ensureSchema(); renderMenu();};}
+function renderMenu(){app.innerHTML=`<div class='card'><div class='row' style='justify-content:space-between'><h2>Menú principal</h2><span class='badge'>${selectedFileName||'Libro sin nombre'}</span></div><div class='menu'>
+<button class='btn' id='mVacAlta'>Alta Vacante</button><button id='mVacFind'>Buscar / Editar Vacantes</button><button class='btn' id='mEmpAlta'>Alta Empleado</button><button id='mEmpFind'>Buscar / Editar Empleados</button><button id='mCat'>Catálogos</button><button class='btn success' id='mSave'>Guardar Excel</button>
+</div><div id='content' class='section'></div></div>`;
+mVacAlta.onclick=()=>renderVacForm(); mVacFind.onclick=()=>renderVacTable(); mEmpAlta.onclick=()=>renderEmpForm(); mEmpFind.onclick=()=>renderEmpTable(); mCat.onclick=()=>renderCatalogs(); mSave.onclick=exportWorkbook;}
+function nextId(sheet,col){return ((db[sheet]||[]).reduce((m,r)=>Math.max(m,Number(r[col])||0),0))+1;}
+function catOpts(sheet,placeholder='Seleccione...'){const vals=uniqueValues(sheet); return `<option value=''>${placeholder}</option>`+vals.map(v=>`<option>${v}</option>`).join('');}
+function renderVacForm(editId){const row=editId?db[SHEETS.VAC].find(r=>String(r.IDV)===String(editId)):null; const isEdit=!!row; const r=row||{IDV:nextId(SHEETS.VAC,'IDV'),STATUS:'ABIERTA'};
+content.innerHTML=`<h3>${isEdit?'Editar':'Alta'} Vacante</h3><div class='grid'>${VAC_COLS.map(c=>fieldVac(c,r,isEdit)).join('')}</div><div class='row'><button class='btn' id='saveVac'>Guardar</button><button id='back'>Volver</button></div>`;
+['FECHA_INICIO','FECHA_CIERRE','STATUS'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalcVac)); recalcVac();
+saveVac.onclick=()=>{const out={}; VAC_COLS.forEach(c=>out[c]=document.getElementById(c)?.value??''); if(!out.FECHA_INICIO) return alert('FECHA_INICIO es obligatoria'); if(!isEdit) db[SHEETS.VAC].push(out); else Object.assign(row,out); renderVacTable();}; back.onclick=renderMenu;}
+function fieldVac(c,r,isEdit){const val=r[c]??''; const dis=(c==='IDV'||c==='TIEMPO_TRANSCURRIDO'||c==='ANIO'||c==='MES'||(!isEdit&&c==='STATUS')); if(c==='STATUS') return sel(c,val,SHEETS.VAC_CATS[1],dis,!isEdit?'ABIERTA':''); if(['PUESTO'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[0],dis); if(['UBICACION'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[2],dis); if(['AREA'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[3],dis); if(['DEPARTAMENTO'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[4],dis); if(['MOTIVO_APERTURA'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[5],dis); if(['OP_ADMON'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[6],dis); if(['RESPONSABLE_RH'].includes(c)) return sel(c,val,SHEETS.VAC_CATS[7],dis); if(c.startsWith('FECHA')) return inp(c,toISO(val),'date',dis); if(c.startsWith('COMENT')) return `<div><label>${c}</label><textarea id='${c}' ${dis?'disabled':''}>${val}</textarea></div>`; return inp(c,val,'text',dis);}
+function recalcVac(){const s=STATUS.value,fi=parseDate(FECHA_INICIO.value),fc=parseDate(FECHA_CIERRE.value); TIEMPO_TRANSCURRIDO.value=s==='DETENIDA'?0:(fc?daysBetween(fi,fc):daysBetween(fi,today())); ANIO.value=fi?fi.getFullYear():''; MES.value=fi?fi.getMonth()+1:'';}
+function sel(id,val,sheet,disabled=false,forced=''){return `<div><label>${id}</label><select id='${id}' ${disabled?'disabled':''}>${forced?`<option>${forced}</option>`:catOpts(sheet)}${!forced&&val?`<option selected>${val}</option>`:''}</select></div>`}
+const inp=(id,val,type='text',disabled=false)=>`<div><label>${id}</label><input id='${id}' type='${type}' value='${val??''}' ${disabled?'disabled':''}></div>`;
+function renderEmpForm(editId){const row=editId?db[SHEETS.EMP].find(r=>String(r.ID_EMPLOYEE)===String(editId)):null; const isEdit=!!row; const r=row||{ID_EMPLOYEE:nextId(SHEETS.EMP,'ID_EMPLOYEE'),STATUS:'ACTIVO'};
+content.innerHTML=`<h3>${isEdit?'Editar':'Alta'} Empleado</h3><div class='grid'>${EMP_COLS.map(c=>fieldEmp(c,r,isEdit)).join('')}</div><div class='row'><button class='btn' id='saveEmp'>Guardar</button><button id='back2'>Volver</button></div>`;
+['CURP','FECHA_INGRESO','FECHA_BAJA','STATUS','FINIQUITO_NOMINA','FINIQUITO_ASIMILADO'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalcEmp)); recalcEmp();
+saveEmp.onclick=()=>{const out={}; EMP_COLS.forEach(c=>out[c]=document.getElementById(c)?.value??''); if(!out.NOMBRE_COMPLETO||!out.FECHA_INGRESO) return alert('NOMBRE_COMPLETO y FECHA_INGRESO son obligatorios'); if(!isEdit) db[SHEETS.EMP].push(out); else Object.assign(row,out); renderEmpTable();}; back2.onclick=renderMenu;}
+function fieldEmp(c,r,isEdit){const val=r[c]??''; const dis=['ID_EMPLOYEE','GENERO','ANIO_NACIMIENTO','GENERACION','ANIO_BAJA','FINIQUITO_TOTAL','DIAS_PERM'].includes(c)||(!isEdit&&c==='STATUS');
+if(c==='STATUS') return sel(c,val,SHEETS.EMP_CATS[0],dis,!isEdit?'ACTIVO':''); if(c==='PUESTO') return sel(c,val,SHEETS.EMP_CATS[1],dis); if(c==='DEPARTAMENTO') return sel(c,val,SHEETS.EMP_CATS[2],dis); if(c==='AREA') return sel(c,val,SHEETS.EMP_CATS[3],dis); if(c==='MOTIVO_BAJA') return sel(c,val,SHEETS.EMP_CATS[4],dis); if(c==='UBICACION') return sel(c,val,SHEETS.EMP_CATS[5],dis); if(c==='FORANEO_CORP') return sel(c,val,SHEETS.EMP_CATS[6],dis); if(c==='NIVEL') return sel(c,val,SHEETS.EMP_CATS[7],dis);
+if(c==='COMENTARIOS') return `<div><label>${c}</label><textarea id='${c}' ${dis?'disabled':''}>${val}</textarea></div>`; if(c.startsWith('FECHA')) return inp(c,toISO(val),'date',dis); if(c.startsWith('FINIQUITO')) return inp(c,val,'number',dis); return inp(c,val,'text',dis);}
+function recalcEmp(){const curp=(CURP.value||'').toUpperCase(); if(curp.length>=11){GENERO.value=/[HM]/.test(curp[10])?curp[10]:''; const yy=Number(curp.slice(4,6)),mm=curp.slice(6,8),dd=curp.slice(8,10); let full=yy+(yy>26?1900:2000); if(mm&&dd){ANIO_NACIMIENTO.value=full; GENERACION.value=calcGeneration(full);} }
+const fb=parseDate(FECHA_BAJA.value),fi=parseDate(FECHA_INGRESO.value); ANIO_BAJA.value=fb?fb.getFullYear():''; DIAS_PERM.value=daysBetween(fi,fb||today());
+const fn=Number(FINIQUITO_NOMINA.value||0),fa=Number(FINIQUITO_ASIMILADO.value||0); FINIQUITO_TOTAL.value=(fn+fa).toFixed(2);
+if(STATUS.value!=='BAJA'){MOTIVO_BAJA.value=''; FECHA_BAJA.value=''; ANIO_BAJA.value='';}}
+function makeTable(sheet,cols,key,editFn,colorFn){const state={filters:Object.fromEntries(cols.map(c=>[c,''])),page:1,size:10};
+content.innerHTML=`<h3>${sheet===SHEETS.VAC?'Vacantes':'Empleados'}</h3><div class='toolbar'><div><label>Registros por hoja</label><select id='size'>${[5,10,20,50,100].map(n=>`<option ${n===10?'selected':''}>${n}</option>`).join('')}</select></div><div><button id='editSel'>Editar seleccionado</button></div><div><button id='back3'>Volver</button></div></div><div style='overflow:auto;max-height:60vh'><table id='tb'></table></div><div class='pagination' id='pg'></div>`;
+back3.onclick=renderMenu; size.onchange=()=>{state.size=Number(size.value);state.page=1;draw()}; editSel.onclick=()=>{const id=selected[sheet===SHEETS.VAC?'vac':'emp']; if(!id) return alert('Selecciona una fila'); editFn(id)};
+function draw(){const rows=(db[sheet]||[]).filter(r=>cols.every(c=>String(r[c]??'').toLowerCase().includes(state.filters[c].toLowerCase()))); const total=Math.max(1,Math.ceil(rows.length/state.size)); state.page=Math.min(state.page,total);
+const start=(state.page-1)*state.size, pageRows=rows.slice(start,start+state.size); tb.innerHTML=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr><tr class='filters'>${cols.map(c=>`<th><input data-c='${c}'></th>`).join('')}</tr></thead><tbody>${pageRows.map(r=>`<tr data-id='${r[key]}' style='background:${colorFn?colorFn(r):''}'>${cols.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`).join('')}</tbody>`;
+[...tb.querySelectorAll('input[data-c]')].forEach(i=>{i.value=state.filters[i.dataset.c]||''; i.oninput=e=>{state.filters[i.dataset.c]=e.target.value;state.page=1;draw();};});
+[...tb.querySelectorAll('tbody tr')].forEach(tr=>tr.onclick=()=>{[...tb.querySelectorAll('tbody tr')].forEach(x=>x.classList.remove('selected')); tr.classList.add('selected'); selected[sheet===SHEETS.VAC?'vac':'emp']=tr.dataset.id;});
+pg.innerHTML=`<button id='f' class='${state.page===1?'disabled':''}'>&lt;&lt; Primera</button><button id='p' class='${state.page===1?'disabled':''}'>&lt; Anterior</button><span>Página ${state.page} de ${total}</span><button id='n' class='${state.page===total?'disabled':''}'>Siguiente &gt;</button><button id='l' class='${state.page===total?'disabled':''}'>Última &gt;&gt;</button>`;
+['f','p','n','l'].forEach(id=>document.getElementById(id).onclick=()=>{if(id==='f')state.page=1;if(id==='p')state.page--;if(id==='n')state.page++;if(id==='l')state.page=total;draw();});}
+draw();}
+function renderVacTable(){makeTable(SHEETS.VAC,VAC_COLS,'IDV',renderVacForm,r=>{const d=Number(r.TIEMPO_TRANSCURRIDO)||0; return d>90?'#fee2e2':(d>=45?'#fef9c3':'#dcfce7');});}
+function renderEmpTable(){makeTable(SHEETS.EMP,EMP_COLS,'ID_EMPLOYEE',renderEmpForm,null);}
+function renderCatalogs(){content.innerHTML=`<h3>Catálogos</h3><div class='row'><button id='cv'>Catálogos Vacantes</button><button id='ce'>Catálogos Empleados</button></div><div id='catBox' class='section'></div>`;
+cv.onclick=()=>catalogCRUD(SHEETS.VAC_CATS); ce.onclick=()=>catalogCRUD(SHEETS.EMP_CATS);}
+function catalogCRUD(list){catBox.innerHTML=`<div class='card'><label>Seleccionar catálogo</label><select id='catSel'>${list.map(s=>`<option>${s}</option>`).join('')}</select><div class='row'><input id='catVal' placeholder='Nuevo valor'><button class='btn' id='add'>Agregar</button></div><table id='catTb'></table></div>`;
+let sel=null; const draw=()=>{const s=catSel.value; const vals=uniqueValues(s); catTb.innerHTML=`<thead><tr><th>Valor</th></tr></thead><tbody>${vals.map(v=>`<tr><td>${v}</td></tr>`).join('')}</tbody>`; [...catTb.querySelectorAll('tr')].slice(1).forEach(tr=>tr.onclick=()=>{sel=tr.cells[0].innerText; catVal.value=sel;});};
+catSel.onchange=draw; add.onclick=()=>{const s=catSel.value,v=catVal.value.trim(); if(!v) return; if(!db[s])db[s]=[]; db[s].push({VALUE:v}); catVal.value=''; draw();};
+catBox.insertAdjacentHTML('beforeend',"<div class='row'><button id='edit'>Editar</button><button class='danger' id='del'>Eliminar</button></div>"); edit.onclick=()=>{if(!sel) return; const s=catSel.value,n=catVal.value.trim(); db[s]=db[s].map(r=>{const v=String(r.VALUE||Object.values(r)[0]||''); return v===sel?{VALUE:n}:r}); draw();}; del.onclick=()=>{if(!sel) return; const s=catSel.value; db[s]=db[s].filter(r=>String(r.VALUE||Object.values(r)[0]||'')!==sel); sel=null; catVal.value=''; draw();}; draw();}
+function exportWorkbook(){const wb=XLSX.utils.book_new(); const append=(name,data,cols,color)=>{const norm=(data||[]).map(r=>cols?objFromCols(cols,r):{VALUE:r.VALUE??Object.values(r)[0]??''}); const ws=XLSX.utils.json_to_sheet(norm,{header:cols||['VALUE']}); ws['!tabColor']={rgb:color}; XLSX.utils.book_append_sheet(wb,ws,name)};
+append(SHEETS.VAC,db[SHEETS.VAC],VAC_COLS,'4472C4'); SHEETS.VAC_CATS.forEach(s=>append(s,db[s],null,'70AD47')); append(SHEETS.EMP,db[SHEETS.EMP],EMP_COLS,'7030A0'); SHEETS.EMP_CATS.forEach(s=>append(s,db[s],null,'ED7D31'));
+XLSX.writeFile(wb,'RH_Actualizado.xlsx'); alert('Archivo exportado: RH_Actualizado.xlsx');}
+boot();
+</script>
+</body>
+</html>
