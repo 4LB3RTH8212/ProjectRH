@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sistema RH PRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --bg1:#5b6ee1; --bg2:#6f52c8; --card:#ffffff; --text:#1f2937; --muted:#6b7280;
+  --line:#d1d5db; --primary:#4f46e5; --primary-hover:#4338ca; --success:#16a34a;
+  --success-hover:#15803d; --danger:#dc2626; --danger-hover:#b91c1c; --selected:#dbeafe;
+  --row-green:#dcfce7; --row-yellow:#fef3c7; --row-red:#fee2e2; --disabled-bg:#e5e7eb;
+  --disabled-text:#9ca3af;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:"Segoe UI",Arial,sans-serif;
+  background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:var(--text);
+}
+.container{
+  width:min(1450px,calc(100vw - 40px)); margin:24px auto; background:var(--card);
+  border-radius:18px; box-shadow:0 18px 40px rgba(0,0,0,.18); padding:28px;
+}
+h1,h2,h3{margin:0 0 18px;text-align:center}
+.hidden{display:none!important}.center{text-align:center}
+.menu{display:grid;grid-template-columns:repeat(2,minmax(260px,320px));justify-content:center;gap:16px;padding:24px 0}
+.menu button,.btn{border:none;border-radius:10px;padding:12px 18px;font-size:15px;cursor:pointer;transition:.2s ease}
+.menu button{width:100%;background:var(--primary);color:#fff}
+.menu button:hover{background:var(--primary-hover);transform:translateY(-1px)}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-hover)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:var(--success-hover)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:var(--danger-hover)}
+.btn-soft{background:#e5e7eb;color:#111827}.btn-soft:hover{background:#d1d5db}
+.btn[disabled],.btn.disabled{background:var(--disabled-bg)!important;color:var(--disabled-text)!important;cursor:not-allowed!important;pointer-events:none;box-shadow:none;transform:none!important}
+.section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.section-header .actions{display:flex;gap:10px;flex-wrap:wrap}
+.file-box{max-width:560px;margin:24px auto 8px;padding:24px;border:1px solid var(--line);background:#fafafa;border-radius:14px;text-align:center}
+.file-box input[type=file]{max-width:100%;margin-bottom:14px}
+.form-wrap{max-width:1100px;margin:0 auto}
+.form-top{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:16px;margin-bottom:18px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:16px 18px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--muted);font-weight:600}
+.field input,.field select,.field textarea{
+  width:100%;min-height:40px;padding:9px 10px;border:1px solid var(--line);
+  border-radius:10px;font-size:14px;outline:none;background:#fff;
+}
+.field textarea{min-height:90px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.field.full{grid-column:1/-1}.hint{font-size:12px;color:var(--muted)}
+.readonly-box{background:#f9fafb!important;font-weight:600}
+.form-actions{margin-top:22px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.table-controls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.table-controls .left,.table-controls .right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:#fff}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:13px}
+th,td{border-bottom:1px solid #e5e7eb;border-right:1px solid #e5e7eb;padding:8px;vertical-align:top;background:#fff}
+th{position:sticky;top:0;background:#f8fafc;z-index:2;white-space:nowrap;text-align:left}
+th .th-title{font-weight:700;margin-bottom:6px}
+th input{width:100%;min-width:110px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px}
+tr.selected td{background:var(--selected)!important}
+tr.row-green td{background:var(--row-green)}tr.row-yellow td{background:var(--row-yellow)}tr.row-red td{background:var(--row-red)}
+.catalog-menu{display:grid;grid-template-columns:repeat(2,minmax(260px,360px));justify-content:center;gap:18px;padding:24px 0}
+.catalog-menu button{min-height:90px;font-size:18px}
+.catalog-layout{display:grid;grid-template-columns:320px 1fr;gap:18px}
+.card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+.catalog-list{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto}
+.catalog-item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;background:#fafafa}
+.catalog-item .name{flex:1}.catalog-item .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.subtle{color:var(--muted);font-size:13px}
+@media(max-width:1100px){.form-top{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.menu,.catalog-menu,.form-grid,.catalog-layout,.form-top{grid-template-columns:1fr}}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<section id="inicio">
+  <h1>Sistema RH</h1>
+  <div class="file-box">
+    <h3>Seleccionar archivo Excel</h3>
+    <p class="subtle">Carga tu archivo base con hojas <b>BD_Vacancies</b>, <b>BD_Employees</b> y catálogos.</p>
+    <input type="file" id="fileInput" accept=".xlsx" />
+    <br>
+    <button class="btn btn-primary" onclick="cargarArchivo()">Cargar archivo</button>
+  </div>
+</section>
+
+<section id="menu" class="hidden">
+  <h1>Menú principal</h1>
+  <div class="menu">
+    <button onclick="abrirAltaVacante()">➕ Alta Vacante</button>
+    <button onclick="mostrarTabla('vacancies')">🔎 Buscar / Editar Vacantes</button>
+    <button onclick="abrirAltaEmpleado()">➕ Alta Empleado</button>
+    <button onclick="mostrarTabla('employees')">🔎 Buscar / Editar Empleados</button>
+    <button onclick="mostrarCatalogosHome()">⚙️ Catálogos</button>
+    <button onclick="descargar()">💾 Guardar Excel</button>
+  </div>
+</section>
+
+<section id="formVacante" class="hidden">
+  <div class="section-header">
+    <h2 id="tituloFormVacante">Alta de Vacante</h2>
+    <div class="actions"><button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button></div>
+  </div>
+
+  <div class="form-wrap">
+    <div class="form-top">
+      <div class="field"><label>ID Vacante</label><input id="IDV" class="readonly-box" disabled></div>
+      <div class="field"><label>Estatus</label><select id="STATUS"></select></div>
+      <div class="field"><label>Tiempo Transcurrido</label><input id="TIEMPO_TRANSCURRIDO" class="readonly-box" disabled></div>
+      <div class="field"><label>Año</label><input id="ANIO" class="readonly-box" disabled></div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field"><label>Puesto</label><select id="PUESTO"></select></div>
+      <div class="field"><label>Ubicación</label><select id="UBICACION"></select></div>
+      <div class="field"><label>Área</label><select id="AREA"></select></div>
+      <div class="field"><label>Departamento</label><select id="DEPARTAMENTO"></select></div>
+      <div class="field"><label>Jefe Directo</label><input id="JEFE_DIRECTO"></div>
+      <div class="field"><label>Motivo de Apertura</label><select id="MOTIVO_APERTURA"></select></div>
+      <div class="field"><label>Fecha Inicio</label><input type="date" id="FECHA_INICIO"></div>
+      <div class="field"><label>Fecha Cierre</label><input type="date" id="FECHA_CIERRE"><span class="hint">En alta puede quedar vacía. En edición puedes capturarla.</span></div>
+      <div class="field"><label>Mes</label><input id="MES" class="readonly-box" disabled></div>
+      <div class="field"><label>Tipo (Operativo / Administrativo)</label><select id="OP_ADMON"></select></div>
+      <div class="field"><label>Responsable RH</label><select id="RESPONSABLE_RH"></select></div>
+      <div class="field full"><label>Comentario 1</label><textarea id="COMENTARIOS"></textarea></div>
+      <div class="field full"><label>Comentario 2</label><textarea id="COMENTARIOS2"></textarea></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-success" onclick="guardarVacante()">Guardar</button>
+      <button class="btn btn-soft" onclick="limpiarFormularioVacante()">Limpiar</button>
+      <button class="btn btn-danger" onclick="volverMenu()">Cancelar</button>
+    </div>
+  </div>
+</section>
+
+<section id="formEmpleado" class="hidden">
+  <div class="section-header">
+    <h2 id="tituloFormEmpleado">Alta de Empleado</h2>
+    <div class="actions"><button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button></div>
+  </div>
+
+  <div class="form-wrap">
+    <div class="form-top">
+      <div class="field"><label>ID Interno</label><input id="ID_EMPLOYEE" class="readonly-box" disabled></div>
+      <div class="field"><label>Número de empleado</label><input id="EMPLOYEE_NUMBER"></div>
+      <div class="field"><label>Status</label><select id="EMP_STATUS"></select></div>
+      <div class="field"><label>Días permanencia</label><input id="DIAS_PERM" class="readonly-box" disabled></div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field full"><label>Nombre completo</label><input id="NOMBRE_COMPLETO"></div>
+      <div class="field"><label>Puesto</label><select id="EMP_PUESTO"></select></div>
+      <div class="field"><label>Fecha de ingreso</label><input type="date" id="FECHA_INGRESO"></div>
+      <div class="field"><label>Fecha de baja</label><input type="date" id="FECHA_BAJA"><span class="hint">Solo aplica cuando el status sea BAJA.</span></div>
+      <div class="field"><label>Departamento</label><select id="EMP_DEPARTAMENTO"></select></div>
+      <div class="field"><label>Área</label><select id="EMP_AREA"></select></div>
+      <div class="field"><label>Año baja</label><input id="ANIO_BAJA" class="readonly-box" disabled></div>
+      <div class="field"><label>CURP</label><input id="CURP" maxlength="18"></div>
+      <div class="field"><label>Género</label><input id="GENERO" class="readonly-box" disabled></div>
+      <div class="field"><label>Año nacimiento</label><input id="ANIO_NACIMIENTO" class="readonly-box" disabled></div>
+      <div class="field"><label>Generación</label><input id="GENERACION" class="readonly-box" disabled></div>
+      <div class="field"><label>Motivo baja</label><select id="MOTIVO_BAJA"></select></div>
+      <div class="field"><label>Finiquito Nómina</label><input type="number" step="0.01" id="FINIQUITO_NOMINA"></div>
+      <div class="field"><label>Finiquito Asimilado</label><input type="number" step="0.01" id="FINIQUITO_ASIMILADO"></div>
+      <div class="field"><label>Finiquito Total</label><input id="FINIQUITO_TOTAL" class="readonly-box" disabled></div>
+      <div class="field"><label>Ubicación</label><select id="EMP_UBICACION"></select></div>
+      <div class="field"><label>Foráneo / Corp</label><select id="FORANEO_CORP"></select></div>
+      <div class="field"><label>Nivel</label><select id="NIVEL"></select></div>
+      <div class="field full"><label>Comentarios</label><textarea id="EMP_COMENTARIOS"></textarea></div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-success" onclick="guardarEmpleado()">Guardar</button>
+      <button class="btn btn-soft" onclick="limpiarFormularioEmpleado()">Limpiar</button>
+      <button class="btn btn-danger" onclick="volverMenu()">Cancelar</button>
+    </div>
+  </div>
+</section>
+
+<section id="tablaDatos" class="hidden">
+  <div class="section-header">
+    <h2 id="tituloTabla">Registros</h2>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="editarSeleccion()">Editar seleccionado</button>
+      <button class="btn btn-soft" onclick="limpiarFiltros()">Limpiar filtros</button>
+      <button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button>
+    </div>
+  </div>
+
+  <div class="table-controls">
+    <div class="left">
+      <label><b>Registros por hoja:</b></label>
+      <select id="rowsPerPageSelect" onchange="cambiarRowsPerPage()">
+        <option value="5">5</option><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option>
+      </select>
+    </div>
+    <div id="pageInfo">Página 1 de 1</div>
+    <div class="right">
+      <button id="btnPrimera" class="btn btn-soft" onclick="irPrimeraPagina()"><< Primera</button>
+      <button id="btnAnterior" class="btn btn-soft" onclick="irPaginaAnterior()">< Anterior</button>
+      <button id="btnSiguiente" class="btn btn-soft" onclick="irPaginaSiguiente()">Siguiente ></button>
+      <button id="btnUltima" class="btn btn-soft" onclick="irUltimaPagina()">Última >></button>
+    </div>
+  </div>
+
+  <div class="table-wrap"><table id="tabla"></table></div>
+</section>
+
+<section id="catalogosHome" class="hidden">
+  <h2>Catálogos</h2>
+  <div class="catalog-menu">
+    <button class="btn btn-primary" onclick="abrirCatalogos('vacancies')">Catálogos Vacantes</button>
+    <button class="btn btn-primary" onclick="abrirCatalogos('employees')">Catálogos Empleados</button>
+  </div>
+  <div class="form-actions"><button class="btn btn-soft" onclick="volverMenu()">Volver</button></div>
+</section>
+
+<section id="catalogos" class="hidden">
+  <div class="section-header">
+    <h2 id="tituloCatalogos">Catálogos</h2>
+    <div class="actions"><button class="btn btn-soft" onclick="mostrarCatalogosHome()">Volver</button></div>
+  </div>
+
+  <div class="catalog-layout">
+    <div class="card">
+      <div class="field"><label>Catálogo</label><select id="catalogSelect" onchange="cargarCatalogoVista()"></select></div>
+      <div class="field" style="margin-top:14px;"><label>Nuevo valor</label><input id="nuevoValor"></div>
+      <div class="form-actions" style="justify-content:flex-start;"><button class="btn btn-success" onclick="agregarCatalogo()">Agregar</button></div>
+    </div>
+    <div class="card"><div id="listaCatalogo" class="catalog-list"></div></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+const colsVac = ["IDV","PUESTO","STATUS","UBICACION","AREA","DEPARTAMENTO","JEFE_DIRECTO","MOTIVO_APERTURA","FECHA_INICIO","FECHA_CIERRE","TIEMPO_TRANSCURRIDO","ANIO","MES","OP_ADMON","RESPONSABLE_RH","COMENTARIOS","COMENTARIOS2"];
+const colsEmp = ["ID_EMPLOYEE","EMPLOYEE_NUMBER","STATUS","NOMBRE_COMPLETO","PUESTO","FECHA_INGRESO","FECHA_BAJA","DEPARTAMENTO","AREA","ANIO_BAJA","CURP","GENERO","ANIO_NACIMIENTO","GENERACION","MOTIVO_BAJA","COMENTARIOS","FINIQUITO_NOMINA","FINIQUITO_ASIMILADO","FINIQUITO_TOTAL","UBICACION","FORANEO_CORP","NIVEL","DIAS_PERM"];
+
+const catalogGroups = {
+  vacancies: {
+    title: "Catálogos Vacantes",
+    map: {
+      PUESTO: { sheet:"CAT_Positions", label:"Puestos", select:"PUESTO" },
+      STATUS: { sheet:"CAT_Status", label:"Status", select:"STATUS" },
+      UBICACION: { sheet:"CAT_Locations", label:"Ubicaciones", select:"UBICACION" },
+      AREA: { sheet:"CAT_Areas", label:"Áreas", select:"AREA" },
+      DEPARTAMENTO: { sheet:"CAT_Departments", label:"Departamentos", select:"DEPARTAMENTO" },
+      MOTIVO_APERTURA: { sheet:"CAT_OpeningReasons", label:"Motivos de apertura", select:"MOTIVO_APERTURA" },
+      OP_ADMON: { sheet:"CAT_OperationalType", label:"Operativo / Administrativo", select:"OP_ADMON" },
+      RESPONSABLE_RH: { sheet:"CAT_HRResponsible", label:"Responsable RH", select:"RESPONSABLE_RH" }
+    }
+  },
+  employees: {
+    title: "Catálogos Empleados",
+    map: {
+      STATUS: { sheet:"CAT_EmployeeStatus", label:"Status", select:"EMP_STATUS" },
+      PUESTO: { sheet:"CAT_EmployeePositions", label:"Puestos", select:"EMP_PUESTO" },
+      DEPARTAMENTO: { sheet:"CAT_EmployeeDepartments", label:"Departamentos", select:"EMP_DEPARTAMENTO" },
+      AREA: { sheet:"CAT_EmployeeAreas", label:"Áreas", select:"EMP_AREA" },
+      MOTIVO_BAJA: { sheet:"CAT_TerminationReasons", label:"Motivos de baja", select:"MOTIVO_BAJA" },
+      UBICACION: { sheet:"CAT_EmployeeLocations", label:"Ubicaciones", select:"EMP_UBICACION" },
+      FORANEO_CORP: { sheet:"CAT_ForaneoCorp", label:"Foráneo / Corp", select:"FORANEO_CORP" },
+      NIVEL: { sheet:"CAT_EmployeeLevels", label:"Nivel", select:"NIVEL" }
+    }
+  }
+};
+
+let workbook=null, dataVac=[], dataEmp=[], catalogs={};
+let currentEntity="", catalogEntity="", modoEdicion=false, selectedID=null;
+let currentPage=1, rowsPerPage=10, filteredData=[];
+
+function $(id){return document.getElementById(id);}
+function show(id){["inicio","menu","formVacante","formEmpleado","tablaDatos","catalogosHome","catalogos"].forEach(s=>$(s).classList.add("hidden"));$(id).classList.remove("hidden");}
+function escapeHtml(v){return String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
+function norm(row, cols){const o={}; cols.forEach(c=>o[c]=row?.[c] ?? ""); return o;}
+function getNextID(arr, field){return arr.length ? Math.max(...arr.map(x=>Number(x[field])||0))+1 : 1;}
+function todayDate(){const d=new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate());}
+function parseDate(s){if(!s)return null; const d=new Date(s+"T00:00:00"); return isNaN(d)?null:d;}
+function diffDays(start,end){if(!start||!end)return ""; return Math.floor((end-start)/(1000*60*60*24));}
+function getYear(s){const d=parseDate(s); return d?d.getFullYear():"";}
+function getMonthText(s){const d=parseDate(s); return d?d.toLocaleString("es-MX",{month:"long"}).toUpperCase():"";}
+function num(v){return Number(v)||0;}
+
+function cargarArchivo(){
+  const file=$("fileInput").files[0];
+  if(!file){ alert("Selecciona un archivo Excel."); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    workbook=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+    dataVac=XLSX.utils.sheet_to_json(workbook.Sheets["BD_Vacancies"]||{}, {defval:""}).map(r=>norm(r,colsVac));
+    dataEmp=XLSX.utils.sheet_to_json(workbook.Sheets["BD_Employees"]||{}, {defval:""}).map(r=>norm(r,colsEmp));
+    loadAllCatalogs();
+    show("menu");
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadAllCatalogs(){
+  catalogs={};
+  ["vacancies","employees"].forEach(entity=>{
+    catalogs[entity]={};
+    Object.entries(catalogGroups[entity].map).forEach(([field,cfg])=>{
+      const rows=XLSX.utils.sheet_to_json(workbook.Sheets[cfg.sheet]||{}, {defval:""});
+      catalogs[entity][field]=rows.map(r=>({ID:r.ID ?? "", Name:r.Name ?? ""}));
+      fillSelect(cfg.select, catalogs[entity][field]);
+    });
+  });
+}
+
+function fillSelect(selectId, list, keepValue=true){
+  const sel=$(selectId); if(!sel)return;
+  const old=sel.value;
+  sel.innerHTML="";
+  const empty=document.createElement("option");
+  empty.value=""; empty.textContent="-- Selecciona una opción --"; sel.appendChild(empty);
+  (list||[]).forEach(item=>{const opt=document.createElement("option"); opt.value=item.Name; opt.textContent=item.Name; sel.appendChild(opt);});
+  if(keepValue && old && [...sel.options].some(o=>o.value===old)) sel.value=old; else sel.value="";
+}
+
+function setDefaultSelect(selectId, text){
+  const sel=$(selectId); if(!sel)return;
+  const idx=[...sel.options].findIndex(o=>String(o.textContent).trim().toUpperCase()===text.toUpperCase());
+  if(idx>=0) sel.selectedIndex=idx;
+}
+
+/* VACANTES */
+function abrirAltaVacante(){
+  currentEntity="vacancies"; modoEdicion=false; selectedID=null;
+  $("tituloFormVacante").textContent="Alta de Vacante";
+  limpiarFormularioVacante();
+  $("IDV").value=getNextID(dataVac,"IDV");
+  $("STATUS").disabled=true;
+  setDefaultSelect("STATUS","ABIERTA");
+  $("FECHA_CIERRE").value="";
+  recalcularVacante();
+  show("formVacante");
+}
+
+function limpiarFormularioVacante(){
+  ["PUESTO","STATUS","UBICACION","AREA","DEPARTAMENTO","JEFE_DIRECTO","MOTIVO_APERTURA","FECHA_INICIO","FECHA_CIERRE","TIEMPO_TRANSCURRIDO","ANIO","MES","OP_ADMON","RESPONSABLE_RH","COMENTARIOS","COMENTARIOS2"].forEach(id=>{
+    const el=$(id); if(!el)return; el.value="";
+  });
+  $("IDV").value=getNextID(dataVac,"IDV");
+  if(!modoEdicion){$("STATUS").disabled=true; setDefaultSelect("STATUS","ABIERTA");}
+  recalcularVacante();
+}
+
+function calcularTiempoVac(inicio,cierre,status){
+  if(!inicio)return "";
+  if(String(status||"").trim().toUpperCase()==="DETENIDA")return 0;
+  return diffDays(parseDate(inicio), cierre?parseDate(cierre):todayDate());
+}
+function recalcularVacante(){
+  $("TIEMPO_TRANSCURRIDO").value=calcularTiempoVac($("FECHA_INICIO").value,$("FECHA_CIERRE").value,$("STATUS").value);
+  $("ANIO").value=getYear($("FECHA_INICIO").value);
+  $("MES").value=getMonthText($("FECHA_INICIO").value);
+}
+
+function guardarVacante(){
+  const obj=norm({
+    IDV:Number($("IDV").value)||getNextID(dataVac,"IDV"),
+    PUESTO:$("PUESTO").value, STATUS:$("STATUS").value, UBICACION:$("UBICACION").value, AREA:$("AREA").value,
+    DEPARTAMENTO:$("DEPARTAMENTO").value, JEFE_DIRECTO:$("JEFE_DIRECTO").value, MOTIVO_APERTURA:$("MOTIVO_APERTURA").value,
+    FECHA_INICIO:$("FECHA_INICIO").value, FECHA_CIERRE:$("FECHA_CIERRE").value,
+    TIEMPO_TRANSCURRIDO:calcularTiempoVac($("FECHA_INICIO").value,$("FECHA_CIERRE").value,$("STATUS").value),
+    ANIO:getYear($("FECHA_INICIO").value), MES:getMonthText($("FECHA_INICIO").value),
+    OP_ADMON:$("OP_ADMON").value, RESPONSABLE_RH:$("RESPONSABLE_RH").value, COMENTARIOS:$("COMENTARIOS").value, COMENTARIOS2:$("COMENTARIOS2").value
+  },colsVac);
+  if(modoEdicion){
+    const i=dataVac.findIndex(r=>Number(r.IDV)===Number(selectedID));
+    if(i<0){alert("No se encontró la vacante.");return;}
+    dataVac[i]=obj; alert("Vacante actualizada."); mostrarTabla("vacancies");
+  }else{
+    dataVac.push(obj); alert("Vacante guardada."); limpiarFormularioVacante();
+  }
+}
+
+/* EMPLEADOS */
+function abrirAltaEmpleado(){
+  currentEntity="employees"; modoEdicion=false; selectedID=null;
+  $("tituloFormEmpleado").textContent="Alta de Empleado";
+  limpiarFormularioEmpleado();
+  $("ID_EMPLOYEE").value=getNextID(dataEmp,"ID_EMPLOYEE");
+  $("EMP_STATUS").disabled=true;
+  setDefaultSelect("EMP_STATUS","ACTIVO");
+  $("FECHA_BAJA").value="";
+  $("MOTIVO_BAJA").value="";
+  recalcularEmpleado();
+  show("formEmpleado");
+}
+
+function limpiarFormularioEmpleado(){
+  ["EMPLOYEE_NUMBER","EMP_STATUS","NOMBRE_COMPLETO","EMP_PUESTO","FECHA_INGRESO","FECHA_BAJA","EMP_DEPARTAMENTO","EMP_AREA","ANIO_BAJA","CURP","GENERO","ANIO_NACIMIENTO","GENERACION","MOTIVO_BAJA","EMP_COMENTARIOS","FINIQUITO_NOMINA","FINIQUITO_ASIMILADO","FINIQUITO_TOTAL","EMP_UBICACION","FORANEO_CORP","NIVEL","DIAS_PERM"].forEach(id=>{
+    const el=$(id); if(!el)return; el.value="";
+  });
+  $("ID_EMPLOYEE").value=getNextID(dataEmp,"ID_EMPLOYEE");
+  if(!modoEdicion){$("EMP_STATUS").disabled=true; setDefaultSelect("EMP_STATUS","ACTIVO");}
+  recalcularEmpleado();
+}
+
+function parseCurp(curp){
+  const c=String(curp||"").trim().toUpperCase();
+  if(c.length<11)return {genero:"", anio:""};
+  const yy=Number(c.substring(4,6));
+  const gender=c.substring(10,11);
+  const currentYY=Number(String(new Date().getFullYear()).slice(-2));
+  const century=yy<=currentYY?2000:1900;
+  return {genero:(gender==="H"||gender==="M")?gender:"", anio:century+yy};
+}
+
+function getGeneration(year){
+  const y=Number(year);
+  if(!y)return "";
+  if(y>=1946 && y<=1964)return "BABY BOOMER";
+  if(y>=1965 && y<=1980)return "GENERACION X";
+  if(y>=1981 && y<=1996)return "MILLENNIAL";
+  if(y>=1997 && y<=2012)return "GENERACION Z";
+  if(y>=2013)return "GENERACION ALPHA";
+  return "";
+}
+
+function recalcularEmpleado(){
+  const curpInfo=parseCurp($("CURP").value);
+  $("GENERO").value=curpInfo.genero;
+  $("ANIO_NACIMIENTO").value=curpInfo.anio;
+  $("GENERACION").value=getGeneration(curpInfo.anio);
+  $("ANIO_BAJA").value=getYear($("FECHA_BAJA").value);
+  $("FINIQUITO_TOTAL").value=(num($("FINIQUITO_NOMINA").value)+num($("FINIQUITO_ASIMILADO").value)).toFixed(2);
+  const inicio=parseDate($("FECHA_INGRESO").value);
+  const fin=$("FECHA_BAJA").value?parseDate($("FECHA_BAJA").value):todayDate();
+  $("DIAS_PERM").value=diffDays(inicio,fin);
+}
+
+function guardarEmpleado(){
+  const obj=norm({
+    ID_EMPLOYEE:Number($("ID_EMPLOYEE").value)||getNextID(dataEmp,"ID_EMPLOYEE"),
+    EMPLOYEE_NUMBER:$("EMPLOYEE_NUMBER").value, STATUS:$("EMP_STATUS").value, NOMBRE_COMPLETO:$("NOMBRE_COMPLETO").value,
+    PUESTO:$("EMP_PUESTO").value, FECHA_INGRESO:$("FECHA_INGRESO").value, FECHA_BAJA:$("FECHA_BAJA").value,
+    DEPARTAMENTO:$("EMP_DEPARTAMENTO").value, AREA:$("EMP_AREA").value, ANIO_BAJA:$("ANIO_BAJA").value,
+    CURP:$("CURP").value.toUpperCase(), GENERO:$("GENERO").value, ANIO_NACIMIENTO:$("ANIO_NACIMIENTO").value,
+    GENERACION:$("GENERACION").value, MOTIVO_BAJA:$("MOTIVO_BAJA").value, COMENTARIOS:$("EMP_COMENTARIOS").value,
+    FINIQUITO_NOMINA:$("FINIQUITO_NOMINA").value, FINIQUITO_ASIMILADO:$("FINIQUITO_ASIMILADO").value,
+    FINIQUITO_TOTAL:$("FINIQUITO_TOTAL").value, UBICACION:$("EMP_UBICACION").value,
+    FORANEO_CORP:$("FORANEO_CORP").value, NIVEL:$("NIVEL").value, DIAS_PERM:$("DIAS_PERM").value
+  },colsEmp);
+  if(modoEdicion){
+    const i=dataEmp.findIndex(r=>Number(r.ID_EMPLOYEE)===Number(selectedID));
+    if(i<0){alert("No se encontró el empleado.");return;}
+    dataEmp[i]=obj; alert("Empleado actualizado."); mostrarTabla("employees");
+  }else{
+    dataEmp.push(obj); alert("Empleado guardado."); limpiarFormularioEmpleado();
+  }
+}
+
+/* TABLAS */
+function mostrarTabla(entity){
+  currentEntity=entity; modoEdicion=false; selectedID=null; currentPage=1;
+  filteredData=entity==="vacancies"?[...dataVac]:[...dataEmp];
+  $("tituloTabla").textContent=entity==="vacancies"?"Vacantes":"Empleados";
+  show("tablaDatos"); renderTablaPaginada();
+}
+function activeCols(){return currentEntity==="vacancies"?colsVac:colsEmp;}
+function activeID(){return currentEntity==="vacancies"?"IDV":"ID_EMPLOYEE";}
+function renderTablaPaginada(){
+  const totalPages=Math.max(1,Math.ceil(filteredData.length/rowsPerPage));
+  currentPage=Math.min(Math.max(currentPage,1),totalPages);
+  const start=(currentPage-1)*rowsPerPage;
+  renderTabla(filteredData.slice(start,start+rowsPerPage));
+  $("pageInfo").textContent=`Página ${currentPage} de ${totalPages} | Registros ${filteredData.length}`;
+  $("btnPrimera").disabled=currentPage<=1; $("btnAnterior").disabled=currentPage<=1;
+  $("btnSiguiente").disabled=currentPage>=totalPages; $("btnUltima").disabled=currentPage>=totalPages;
+}
+function getRowClass(r){
+  if(currentEntity!=="vacancies")return "";
+  const t=Number(r.TIEMPO_TRANSCURRIDO);
+  if(isNaN(t))return "";
+  if(t>90)return "row-red"; if(t>=45)return "row-yellow"; return "row-green";
+}
+function renderTabla(rows){
+  const cols=activeCols(), idField=activeID();
+  const filters={}; document.querySelectorAll("#tabla thead input").forEach(i=>filters[i.dataset.col]=i.value);
+  let html="<thead><tr>";
+  cols.forEach(c=>html+=`<th><div class="th-title">${c}</div><input data-col="${c}" onkeyup="filtrar()" placeholder="Filtrar" value="${escapeHtml(filters[c]||"")}"></th>`);
+  html+="<th><div class='th-title'>Sel</div></th></tr></thead><tbody>";
+  rows.forEach(r=>{
+    const id=Number(r[idField]);
+    html+=`<tr class="${id===Number(selectedID)?"selected":getRowClass(r)}" onclick="selectRow(${id},this)">`;
+    cols.forEach(c=>html+=`<td>${escapeHtml(r[c])}</td>`);
+    html+="<td class='center'>✔</td></tr>";
+  });
+  html+="</tbody>"; $("tabla").innerHTML=html;
+}
+function selectRow(id,tr){selectedID=Number(id);document.querySelectorAll("#tabla tbody tr").forEach(x=>x.classList.remove("selected"));tr.classList.add("selected");}
+function filtrar(){
+  const source=currentEntity==="vacancies"?dataVac:dataEmp, inputs=[...document.querySelectorAll("#tabla thead input")];
+  filteredData=source.filter(r=>inputs.every(inp=>!inp.value.trim() || String(r[inp.dataset.col]??"").toLowerCase().includes(inp.value.trim().toLowerCase())));
+  currentPage=1; renderTablaPaginada();
+}
+function limpiarFiltros(){filteredData=currentEntity==="vacancies"?[...dataVac]:[...dataEmp]; currentPage=1; renderTablaPaginada();}
+function cambiarRowsPerPage(){rowsPerPage=Number($("rowsPerPageSelect").value)||10; currentPage=1; renderTablaPaginada();}
+function irPrimeraPagina(){currentPage=1;renderTablaPaginada();}
+function irPaginaAnterior(){currentPage--;renderTablaPaginada();}
+function irPaginaSiguiente(){currentPage++;renderTablaPaginada();}
+function irUltimaPagina(){currentPage=Math.ceil(filteredData.length/rowsPerPage);renderTablaPaginada();}
+function editarSeleccion(){
+  if(selectedID==null){alert("Selecciona un registro.");return;}
+  modoEdicion=true;
+  if(currentEntity==="vacancies"){
+    const r=dataVac.find(x=>Number(x.IDV)===Number(selectedID)); if(!r)return;
+    $("tituloFormVacante").textContent="Editar Vacante"; show("formVacante");
+    colsVac.forEach(c=>{const el=$(c); if(el)el.value=r[c]??"";});
+    $("STATUS").disabled=false; recalcularVacante();
+  }else{
+    const r=dataEmp.find(x=>Number(x.ID_EMPLOYEE)===Number(selectedID)); if(!r)return;
+    $("tituloFormEmpleado").textContent="Editar Empleado"; show("formEmpleado");
+    $("ID_EMPLOYEE").value=r.ID_EMPLOYEE??""; $("EMPLOYEE_NUMBER").value=r.EMPLOYEE_NUMBER??""; $("EMP_STATUS").value=r.STATUS??"";
+    $("NOMBRE_COMPLETO").value=r.NOMBRE_COMPLETO??""; $("EMP_PUESTO").value=r.PUESTO??""; $("FECHA_INGRESO").value=r.FECHA_INGRESO??"";
+    $("FECHA_BAJA").value=r.FECHA_BAJA??""; $("EMP_DEPARTAMENTO").value=r.DEPARTAMENTO??""; $("EMP_AREA").value=r.AREA??"";
+    $("ANIO_BAJA").value=r.ANIO_BAJA??""; $("CURP").value=r.CURP??""; $("GENERO").value=r.GENERO??"";
+    $("ANIO_NACIMIENTO").value=r.ANIO_NACIMIENTO??""; $("GENERACION").value=r.GENERACION??""; $("MOTIVO_BAJA").value=r.MOTIVO_BAJA??"";
+    $("EMP_COMENTARIOS").value=r.COMENTARIOS??""; $("FINIQUITO_NOMINA").value=r.FINIQUITO_NOMINA??""; $("FINIQUITO_ASIMILADO").value=r.FINIQUITO_ASIMILADO??"";
+    $("FINIQUITO_TOTAL").value=r.FINIQUITO_TOTAL??""; $("EMP_UBICACION").value=r.UBICACION??""; $("FORANEO_CORP").value=r.FORANEO_CORP??"";
+    $("NIVEL").value=r.NIVEL??""; $("DIAS_PERM").value=r.DIAS_PERM??"";
+    $("EMP_STATUS").disabled=false; recalcularEmpleado();
+  }
+}
+
+/* CATÁLOGOS */
+function mostrarCatalogosHome(){show("catalogosHome");}
+function abrirCatalogos(entity){
+  catalogEntity=entity; $("tituloCatalogos").textContent=catalogGroups[entity].title;
+  const sel=$("catalogSelect"); sel.innerHTML="";
+  Object.entries(catalogGroups[entity].map).forEach(([field,cfg])=>{const opt=document.createElement("option");opt.value=field;opt.textContent=cfg.label;sel.appendChild(opt);});
+  show("catalogos"); cargarCatalogoVista();
+}
+function cargarCatalogoVista(){
+  const field=$("catalogSelect").value, list=catalogs[catalogEntity][field]||[];
+  $("listaCatalogo").innerHTML=list.length?list.map((item,i)=>`
+    <div class="catalog-item"><div class="name">${escapeHtml(item.Name)}</div>
+    <div class="row-actions"><button class="btn btn-soft" onclick="editarCat(${i})">Editar</button><button class="btn btn-danger" onclick="delCat(${i})">Eliminar</button></div></div>`).join(""):"<div class='subtle'>Sin valores.</div>";
+}
+function agregarCatalogo(){
+  const field=$("catalogSelect").value, val=$("nuevoValor").value.trim(); if(!val){alert("Escribe un valor.");return;}
+  const list=catalogs[catalogEntity][field]||[];
+  if(list.some(x=>String(x.Name).toUpperCase()===val.toUpperCase())){alert("Ese valor ya existe.");return;}
+  list.push({ID:list.length?Math.max(...list.map(x=>Number(x.ID)||0))+1:1,Name:val});
+  catalogs[catalogEntity][field]=list; $("nuevoValor").value=""; refreshCatalogSelects(); cargarCatalogoVista();
+}
+function editarCat(i){
+  const field=$("catalogSelect").value, val=prompt("Editar valor",catalogs[catalogEntity][field][i].Name);
+  if(val===null)return; if(!val.trim()){alert("No puede quedar vacío.");return;}
+  catalogs[catalogEntity][field][i].Name=val.trim(); refreshCatalogSelects(); cargarCatalogoVista();
+}
+function delCat(i){
+  if(!confirm("¿Eliminar valor?"))return;
+  const field=$("catalogSelect").value; catalogs[catalogEntity][field].splice(i,1); refreshCatalogSelects(); cargarCatalogoVista();
+}
+function refreshCatalogSelects(){
+  ["vacancies","employees"].forEach(entity=>Object.entries(catalogGroups[entity].map).forEach(([field,cfg])=>fillSelect(cfg.select,catalogs[entity][field])));
+}
+
+/* EXPORT */
+function sheetFromRows(rows, cols, color){
+  const ordered=rows.map(r=>{const o={}; cols.forEach(c=>o[c]=r[c]??""); return o;});
+  const ws=XLSX.utils.json_to_sheet(ordered,{header:cols});
+  ws["!tabColor"]={rgb:color}; return ws;
+}
+function descargar(){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheetFromRows(dataVac,colsVac,"4472C4"),"BD_Vacancies");
+  Object.entries(catalogGroups.vacancies.map).forEach(([field,cfg])=>{
+    const ws=XLSX.utils.json_to_sheet((catalogs.vacancies[field]||[]).map(x=>({ID:x.ID??"",Name:x.Name??""})),{header:["ID","Name"]});
+    ws["!tabColor"]={rgb:"70AD47"}; XLSX.utils.book_append_sheet(wb,ws,cfg.sheet);
+  });
+  XLSX.utils.book_append_sheet(wb,sheetFromRows(dataEmp,colsEmp,"7030A0"),"BD_Employees");
+  Object.entries(catalogGroups.employees.map).forEach(([field,cfg])=>{
+    const ws=XLSX.utils.json_to_sheet((catalogs.employees[field]||[]).map(x=>({ID:x.ID??"",Name:x.Name??""})),{header:["ID","Name"]});
+    ws["!tabColor"]={rgb:"ED7D31"}; XLSX.utils.book_append_sheet(wb,ws,cfg.sheet);
+  });
+  XLSX.writeFile(wb,"RH_Actualizado.xlsx");
+}
+function volverMenu(){modoEdicion=false;selectedID=null;show("menu");}
+
+/* EVENTOS */
+document.addEventListener("DOMContentLoaded",()=>{
+  ["FECHA_INICIO","FECHA_CIERRE","STATUS"].forEach(id=>["input","change"].forEach(ev=>document.addEventListener(ev,e=>{if(e.target?.id===id)recalcularVacante();})));
+  ["FECHA_INGRESO","FECHA_BAJA","CURP","EMP_STATUS","FINIQUITO_NOMINA","FINIQUITO_ASIMILADO"].forEach(id=>["input","change"].forEach(ev=>document.addEventListener(ev,e=>{if(e.target?.id===id)recalcularEmpleado();})));
+});
+</script>
+</body>
+</html>
