@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sistema RH PRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root{
+    --bg1:#5b6ee1;
+    --bg2:#6f52c8;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --line:#d1d5db;
+    --primary:#4f46e5;
+    --primary-hover:#4338ca;
+    --success:#16a34a;
+    --success-hover:#15803d;
+    --danger:#dc2626;
+    --danger-hover:#b91c1c;
+    --selected:#dbeafe;
+    --row-green:#dcfce7;
+    --row-yellow:#fef3c7;
+    --row-red:#fee2e2;
+    --disabled-bg:#e5e7eb;
+    --disabled-text:#9ca3af;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin:0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, var(--bg1), var(--bg2));
+    color: var(--text);
+  }
+
+  .container{
+    width:min(1450px, calc(100vw - 40px));
+    margin:24px auto;
+    background:var(--card);
+    border-radius:18px;
+    box-shadow:0 18px 40px rgba(0,0,0,.18);
+    padding:28px;
+  }
+
+  h1,h2,h3{
+    margin:0 0 18px 0;
+    text-align:center;
+  }
+
+  .hidden{ display:none !important; }
+  .center{ text-align:center; }
+
+  .menu{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    padding:24px 0;
+  }
+
+  .menu button,
+  .btn{
+    border:none;
+    border-radius:10px;
+    padding:12px 18px;
+    font-size:15px;
+    cursor:pointer;
+    transition:.2s ease;
+  }
+
+  .menu button{
+    width:280px;
+    background:var(--primary);
+    color:#fff;
+  }
+
+  .menu button:hover{
+    background:var(--primary-hover);
+    transform:translateY(-1px);
+  }
+
+  .btn-primary{ background:var(--primary); color:#fff; }
+  .btn-primary:hover{ background:var(--primary-hover); }
+
+  .btn-success{ background:var(--success); color:#fff; }
+  .btn-success:hover{ background:var(--success-hover); }
+
+  .btn-danger{ background:var(--danger); color:#fff; }
+  .btn-danger:hover{ background:var(--danger-hover); }
+
+  .btn-soft{ background:#e5e7eb; color:#111827; }
+  .btn-soft:hover{ background:#d1d5db; }
+
+  .btn[disabled],
+  .btn.disabled{
+    background:var(--disabled-bg) !important;
+    color:var(--disabled-text) !important;
+    cursor:not-allowed !important;
+    pointer-events:none;
+    box-shadow:none;
+    transform:none !important;
+  }
+
+  .section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+
+  .section-header .actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .file-box{
+    max-width:560px;
+    margin:24px auto 8px;
+    padding:24px;
+    border:1px solid var(--line);
+    background:#fafafa;
+    border-radius:14px;
+    text-align:center;
+  }
+
+  .file-box input[type="file"]{
+    max-width:100%;
+    margin-bottom:14px;
+  }
+
+  .form-wrap{
+    max-width:1100px;
+    margin:0 auto;
+  }
+
+  .form-top{
+    display:grid;
+    grid-template-columns: 220px 220px 220px 220px;
+    gap:16px;
+    margin-bottom:18px;
+  }
+
+  .form-grid{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(280px, 1fr));
+    gap:16px 18px;
+  }
+
+  .field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+
+  .field label{
+    font-size:13px;
+    color:var(--muted);
+    font-weight:600;
+  }
+
+  .field input,
+  .field select,
+  .field textarea{
+    width:100%;
+    min-height:40px;
+    padding:9px 10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    font-size:14px;
+    outline:none;
+    background:#fff;
+  }
+
+  .field textarea{
+    min-height:90px;
+    resize:vertical;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(79,70,229,.12);
+  }
+
+  .field.full{
+    grid-column:1 / -1;
+  }
+
+  .hint{
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .readonly-box{
+    background:#f9fafb !important;
+    font-weight:600;
+  }
+
+  .form-actions{
+    margin-top:22px;
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  .table-controls{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:12px;
+  }
+
+  .table-controls .left,
+  .table-controls .right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .table-wrap{
+    overflow:auto;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:#fff;
+  }
+
+  table{
+    width:max-content;
+    min-width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+
+  th, td{
+    border-bottom:1px solid #e5e7eb;
+    border-right:1px solid #e5e7eb;
+    padding:8px 8px;
+    vertical-align:top;
+    background:#fff;
+  }
+
+  th{
+    position:sticky;
+    top:0;
+    background:#f8fafc;
+    z-index:2;
+    white-space:nowrap;
+    text-align:left;
+  }
+
+  th .th-title{
+    font-weight:700;
+    margin-bottom:6px;
+  }
+
+  th input{
+    width:100%;
+    min-width:110px;
+    padding:6px 8px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    font-size:12px;
+  }
+
+  tr.selected td{
+    background:var(--selected) !important;
+  }
+
+  tr.row-green td{
+    background:var(--row-green);
+  }
+
+  tr.row-yellow td{
+    background:var(--row-yellow);
+  }
+
+  tr.row-red td{
+    background:var(--row-red);
+  }
+
+  .catalog-layout{
+    display:grid;
+    grid-template-columns: 320px 1fr;
+    gap:18px;
+  }
+
+  .card{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    background:#fff;
+  }
+
+  .catalog-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-height:460px;
+    overflow:auto;
+  }
+
+  .catalog-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    padding:10px 12px;
+    background:#fafafa;
+  }
+
+  .catalog-item .name{
+    flex:1;
+  }
+
+  .catalog-item .row-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .subtle{
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  @media (max-width: 1100px){
+    .form-top{
+      grid-template-columns:1fr 1fr;
+    }
+  }
+
+  @media (max-width: 900px){
+    .form-grid,
+    .catalog-layout,
+    .form-top{
+      grid-template-columns:1fr;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <section id="inicio">
+      <h1>Sistema RH</h1>
+      <div class="file-box">
+        <h3>Seleccionar archivo Excel</h3>
+        <p class="subtle">Carga tu archivo base con la hoja <b>BD_Vacancies</b> y los catálogos.</p>
+        <input type="file" id="fileInput" accept=".xlsx" />
+        <br>
+        <button class="btn btn-primary" onclick="cargarArchivo()">Cargar archivo</button>
+      </div>
+    </section>
+
+    <section id="menu" class="hidden">
+      <h1>Menú principal</h1>
+      <div class="menu">
+        <button onclick="abrirAltaVacante()">➕ Alta Vacante</button>
+        <button onclick="mostrarTabla()">🔎 Buscar / Editar Vacantes</button>
+        <button onclick="mostrarCatalogos()">⚙️ Catálogos</button>
+        <button onclick="descargar()">💾 Guardar Excel</button>
+      </div>
+    </section>
+
+    <section id="formVacante" class="hidden">
+      <div class="section-header">
+        <h2 id="tituloFormVacante">Alta de Vacante</h2>
+        <div class="actions">
+          <button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button>
+        </div>
+      </div>
+
+      <div class="form-wrap">
+        <div class="form-top">
+          <div class="field">
+            <label>ID Vacante</label>
+            <input id="IDV" class="readonly-box" disabled>
+          </div>
+
+          <div class="field">
+            <label>Estatus</label>
+            <select id="STATUS"></select>
+          </div>
+
+          <div class="field">
+            <label>Tiempo Transcurrido</label>
+            <input id="TIEMPO_TRANSCURRIDO" class="readonly-box" disabled>
+          </div>
+
+          <div class="field">
+            <label>Año</label>
+            <input id="ANIO" class="readonly-box" disabled>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Puesto</label>
+            <select id="PUESTO"></select>
+          </div>
+
+          <div class="field">
+            <label>Ubicación</label>
+            <select id="UBICACION"></select>
+          </div>
+
+          <div class="field">
+            <label>Área</label>
+            <select id="AREA"></select>
+          </div>
+
+          <div class="field">
+            <label>Departamento</label>
+            <select id="DEPARTAMENTO"></select>
+          </div>
+
+          <div class="field">
+            <label>Jefe Directo</label>
+            <input id="JEFE_DIRECTO">
+          </div>
+
+          <div class="field">
+            <label>Motivo de Apertura</label>
+            <select id="MOTIVO_APERTURA"></select>
+          </div>
+
+          <div class="field">
+            <label>Fecha Inicio</label>
+            <input type="date" id="FECHA_INICIO">
+          </div>
+
+          <div class="field">
+            <label>Fecha Cierre</label>
+            <input type="date" id="FECHA_CIERRE">
+            <span class="hint">En alta puede quedar vacía. En edición puedes capturarla.</span>
+          </div>
+
+          <div class="field">
+            <label>Mes</label>
+            <input id="MES" class="readonly-box" disabled>
+          </div>
+
+          <div class="field">
+            <label>Tipo (Operativo / Administrativo)</label>
+            <select id="OP_ADMON"></select>
+          </div>
+
+          <div class="field">
+            <label>Responsable RH</label>
+            <select id="RESPONSABLE_RH"></select>
+          </div>
+
+          <div class="field full">
+            <label>Comentario 1</label>
+            <textarea id="COMENTARIOS"></textarea>
+          </div>
+
+          <div class="field full">
+            <label>Comentario 2</label>
+            <textarea id="COMENTARIOS2"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="guardarVacante()">Guardar</button>
+          <button class="btn btn-soft" onclick="limpiarFormulario()">Limpiar</button>
+          <button class="btn btn-danger" onclick="volverMenu()">Cancelar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="tablaVacantes" class="hidden">
+      <div class="section-header">
+        <h2>Vacantes</h2>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="editarSeleccion()">Editar seleccionado</button>
+          <button class="btn btn-soft" onclick="limpiarFiltros()">Limpiar filtros</button>
+          <button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button>
+        </div>
+      </div>
+
+      <div class="table-controls">
+        <div class="left">
+          <label for="rowsPerPageSelect"><b>Registros por hoja:</b></label>
+          <select id="rowsPerPageSelect" onchange="cambiarRowsPerPage()">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+
+        <div id="pageInfo" style="font-weight:600;">Página 1 de 1</div>
+
+        <div class="right">
+          <button id="btnPrimera" class="btn btn-soft" onclick="irPrimeraPagina()"><< Primera</button>
+          <button id="btnAnterior" class="btn btn-soft" onclick="irPaginaAnterior()">< Anterior</button>
+          <button id="btnSiguiente" class="btn btn-soft" onclick="irPaginaSiguiente()">Siguiente ></button>
+          <button id="btnUltima" class="btn btn-soft" onclick="irUltimaPagina()">Última >></button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabla"></table>
+      </div>
+    </section>
+
+    <section id="catalogos" class="hidden">
+      <div class="section-header">
+        <h2>Catálogos</h2>
+        <div class="actions">
+          <button class="btn btn-soft" onclick="volverMenu()">Volver al menú</button>
+        </div>
+      </div>
+
+      <div class="catalog-layout">
+        <div class="card">
+          <div class="field">
+            <label>Catálogo</label>
+            <select id="catalogSelect" onchange="cargarCatalogoVista()">
+              <option value="PUESTO">Puestos</option>
+              <option value="STATUS">Status</option>
+              <option value="UBICACION">Ubicaciones</option>
+              <option value="AREA">Áreas</option>
+              <option value="DEPARTAMENTO">Departamentos</option>
+              <option value="MOTIVO_APERTURA">Motivos de apertura</option>
+              <option value="OP_ADMON">Operativo / Administrativo</option>
+              <option value="RESPONSABLE_RH">Responsable RH</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top:14px;">
+            <label>Nuevo valor</label>
+            <input id="nuevoValor" placeholder="Escribe el nuevo valor">
+          </div>
+
+          <div class="form-actions" style="justify-content:flex-start;">
+            <button class="btn btn-success" onclick="agregarCatalogo()">Agregar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="text-align:left; margin-bottom:12px;">Valores del catálogo</h3>
+          <div id="listaCatalogo" class="catalog-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+  const columnas = [
+    "IDV","PUESTO","STATUS","UBICACION","AREA","DEPARTAMENTO",
+    "JEFE_DIRECTO","MOTIVO_APERTURA","FECHA_INICIO","FECHA_CIERRE",
+    "TIEMPO_TRANSCURRIDO","ANIO","MES","OP_ADMON",
+    "RESPONSABLE_RH","COMENTARIOS","COMENTARIOS2"
+  ];
+
+  const catalogSheetMap = {
+    PUESTO: "CAT_Positions",
+    STATUS: "CAT_Status",
+    UBICACION: "CAT_Locations",
+    AREA: "CAT_Areas",
+    DEPARTAMENTO: "CAT_Departments",
+    MOTIVO_APERTURA: "CAT_OpeningReasons",
+    OP_ADMON: "CAT_OperationalType",
+    RESPONSABLE_RH: "CAT_HRResponsible"
+  };
+
+  let workbook = null;
+  let data = [];
+  let catalogs = {};
+
+  let modoEdicion = false;
+  let selectedID = null;
+
+  let currentPage = 1;
+  let rowsPerPage = 10;
+  let filteredData = [];
+
+  function mostrarSeccion(id){
+    ["inicio","menu","formVacante","tablaVacantes","catalogos"].forEach(sec=>{
+      document.getElementById(sec).classList.add("hidden");
+    });
+    document.getElementById(id).classList.remove("hidden");
+  }
+
+  function cargarArchivo(){
+    const file = document.getElementById("fileInput").files[0];
+    if(!file){
+      alert("Selecciona un archivo Excel.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+      const bytes = new Uint8Array(e.target.result);
+      workbook = XLSX.read(bytes, { type: "array" });
+
+      if(!workbook.Sheets["BD_Vacancies"]){
+        alert("No se encontró la hoja BD_Vacancies.");
+        return;
+      }
+
+      data = XLSX.utils.sheet_to_json(workbook.Sheets["BD_Vacancies"], { defval: "" });
+      data = data.map(row => normalizarFila(row));
+
+      Object.entries(catalogSheetMap).forEach(([field, sheetName])=>{
+        loadCatalog(sheetName, field);
+      });
+
+      mostrarSeccion("menu");
+    };
+
+    reader.readAsArrayBuffer(file);
+  }
+
+  function normalizarFila(row){
+    const nueva = {};
+    columnas.forEach(col => {
+      nueva[col] = row[col] ?? "";
+    });
+    return nueva;
+  }
+
+  function loadCatalog(sheetName, field){
+    const ws = workbook.Sheets[sheetName];
+    const json = ws ? XLSX.utils.sheet_to_json(ws, { defval: "" }) : [];
+    catalogs[field] = json.map(r => ({
+      ID: r.ID ?? "",
+      Name: r.Name ?? ""
+    }));
+
+    const select = document.getElementById(field);
+    if(select){
+      cargarSelect(field);
+    }
+  }
+
+  function cargarSelect(field){
+    const select = document.getElementById(field);
+    if(!select) return;
+
+    const valorActual = select.value;
+    select.innerHTML = "";
+
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = "";
+    emptyOpt.textContent = "-- Selecciona una opción --";
+    select.appendChild(emptyOpt);
+
+    (catalogs[field] || []).forEach(item=>{
+      const opt = document.createElement("option");
+      opt.value = item.Name;
+      opt.textContent = item.Name;
+      select.appendChild(opt);
+    });
+
+    if (valorActual && [...select.options].some(o => o.value === valorActual)) {
+      select.value = valorActual;
+    } else {
+      select.value = "";
+    }
+  }
+
+  function getNextID(){
+    if(data.length === 0) return 1;
+    return Math.max(...data.map(r => Number(r.IDV) || 0)) + 1;
+  }
+
+  function setStatusAbiertaPorDefecto(){
+    const statusSelect = document.getElementById("STATUS");
+    statusSelect.value = "";
+
+    const idx = [...statusSelect.options].findIndex(opt =>
+      String(opt.textContent).trim().toUpperCase() === "ABIERTA"
+    );
+
+    if(idx >= 0){
+      statusSelect.selectedIndex = idx;
+    }
+  }
+
+  function abrirAltaVacante(){
+    modoEdicion = false;
+    selectedID = null;
+
+    document.getElementById("tituloFormVacante").textContent = "Alta de Vacante";
+    limpiarFormulario();
+
+    document.getElementById("IDV").value = getNextID();
+    document.getElementById("STATUS").disabled = true;
+    setStatusAbiertaPorDefecto();
+    document.getElementById("FECHA_CIERRE").value = "";
+    recalcularCamposEnPantalla();
+
+    mostrarSeccion("formVacante");
+  }
+
+  function limpiarFormulario(){
+    [
+      "PUESTO","STATUS","UBICACION","AREA","DEPARTAMENTO",
+      "JEFE_DIRECTO","MOTIVO_APERTURA","FECHA_INICIO","FECHA_CIERRE",
+      "OP_ADMON","RESPONSABLE_RH","COMENTARIOS","COMENTARIOS2",
+      "TIEMPO_TRANSCURRIDO","ANIO","MES"
+    ].forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+
+      if(el.tagName === "SELECT"){
+        el.value = "";
+      } else {
+        el.value = "";
+      }
+    });
+
+    document.getElementById("IDV").value = getNextID();
+
+    if(!modoEdicion){
+      document.getElementById("STATUS").disabled = true;
+      setStatusAbiertaPorDefecto();
+    }
+
+    recalcularCamposEnPantalla();
+  }
+
+  function calcularTiempoTranscurrido(inicio, cierre, status){
+    if(!inicio) return "";
+
+    const s = String(status || "").trim().toUpperCase();
+
+    if(s === "DETENIDA"){
+      return 0;
+    }
+
+    const fechaInicio = new Date(inicio + "T00:00:00");
+
+    let fechaFin;
+    if(!cierre){
+      fechaFin = new Date();
+    } else {
+      fechaFin = new Date(cierre + "T00:00:00");
+    }
+
+    const diff = Math.floor((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24));
+    return isNaN(diff) ? "" : diff;
+  }
+
+  function obtenerAnio(fechaStr){
+    if(!fechaStr) return "";
+    const fecha = new Date(fechaStr + "T00:00:00");
+    return isNaN(fecha) ? "" : fecha.getFullYear();
+  }
+
+  function obtenerMesTexto(fechaStr){
+    if(!fechaStr) return "";
+    const fecha = new Date(fechaStr + "T00:00:00");
+    if(isNaN(fecha)) return "";
+    return fecha.toLocaleString("es-MX", { month: "long" }).toUpperCase();
+  }
+
+  function recalcularCamposEnPantalla(){
+    const inicio = document.getElementById("FECHA_INICIO").value || "";
+    const cierre = document.getElementById("FECHA_CIERRE").value || "";
+    const status = document.getElementById("STATUS").value || "";
+
+    document.getElementById("TIEMPO_TRANSCURRIDO").value =
+      calcularTiempoTranscurrido(inicio, cierre, status);
+
+    document.getElementById("ANIO").value = obtenerAnio(inicio);
+    document.getElementById("MES").value = obtenerMesTexto(inicio);
+  }
+
+  function guardarVacante(){
+    const obj = {
+      IDV: Number(document.getElementById("IDV").value) || getNextID(),
+      PUESTO: document.getElementById("PUESTO").value || "",
+      STATUS: document.getElementById("STATUS").value || "",
+      UBICACION: document.getElementById("UBICACION").value || "",
+      AREA: document.getElementById("AREA").value || "",
+      DEPARTAMENTO: document.getElementById("DEPARTAMENTO").value || "",
+      JEFE_DIRECTO: document.getElementById("JEFE_DIRECTO").value || "",
+      MOTIVO_APERTURA: document.getElementById("MOTIVO_APERTURA").value || "",
+      FECHA_INICIO: document.getElementById("FECHA_INICIO").value || "",
+      FECHA_CIERRE: document.getElementById("FECHA_CIERRE").value || "",
+      TIEMPO_TRANSCURRIDO: "",
+      ANIO: "",
+      MES: "",
+      OP_ADMON: document.getElementById("OP_ADMON").value || "",
+      RESPONSABLE_RH: document.getElementById("RESPONSABLE_RH").value || "",
+      COMENTARIOS: document.getElementById("COMENTARIOS").value || "",
+      COMENTARIOS2: document.getElementById("COMENTARIOS2").value || ""
+    };
+
+    obj.TIEMPO_TRANSCURRIDO = calcularTiempoTranscurrido(
+      obj.FECHA_INICIO,
+      obj.FECHA_CIERRE,
+      obj.STATUS
+    );
+    obj.ANIO = obtenerAnio(obj.FECHA_INICIO);
+    obj.MES = obtenerMesTexto(obj.FECHA_INICIO);
+
+    if(modoEdicion){
+      const idx = data.findIndex(r => Number(r.IDV) === Number(selectedID));
+      if(idx === -1){
+        alert("No se encontró el registro a editar.");
+        return;
+      }
+      data[idx] = normalizarFila(obj);
+      filteredData = [...data];
+      alert("Vacante actualizada.");
+      modoEdicion = false;
+      selectedID = null;
+      mostrarTabla();
+    } else {
+      data.push(normalizarFila(obj));
+      filteredData = [...data];
+      alert("Vacante guardada.");
+      limpiarFormulario();
+      document.getElementById("IDV").value = getNextID();
+      setStatusAbiertaPorDefecto();
+      recalcularCamposEnPantalla();
+    }
+  }
+
+  function getRowColorClass(row){
+    const tiempo = Number(row.TIEMPO_TRANSCURRIDO);
+
+    if(isNaN(tiempo)) return "";
+    if(tiempo > 90) return "row-red";
+    if(tiempo >= 45) return "row-yellow";
+    if(tiempo < 45) return "row-green";
+    return "";
+  }
+
+  function mostrarTabla(){
+    modoEdicion = false;
+    selectedID = null;
+    filteredData = [...data];
+    currentPage = 1;
+    mostrarSeccion("tablaVacantes");
+    renderTablaPaginada();
+  }
+
+  function renderTablaPaginada(){
+    const totalRows = filteredData.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+
+    if(currentPage > totalPages) currentPage = totalPages;
+    if(currentPage < 1) currentPage = 1;
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const rowsToShow = filteredData.slice(start, end);
+
+    renderTabla(rowsToShow);
+    document.getElementById("pageInfo").textContent = `Página ${currentPage} de ${totalPages}`;
+
+    actualizarBotonesPaginacion(totalPages);
+  }
+
+  function actualizarBotonesPaginacion(totalPages){
+    const btnPrimera = document.getElementById("btnPrimera");
+    const btnAnterior = document.getElementById("btnAnterior");
+    const btnSiguiente = document.getElementById("btnSiguiente");
+    const btnUltima = document.getElementById("btnUltima");
+
+    const enPrimera = currentPage <= 1;
+    const enUltima = currentPage >= totalPages;
+
+    btnPrimera.disabled = enPrimera;
+    btnAnterior.disabled = enPrimera;
+    btnSiguiente.disabled = enUltima;
+    btnUltima.disabled = enUltima;
+  }
+
+  function renderTabla(rows){
+    const t = document.getElementById("tabla");
+
+    const filtrosActuales = {};
+    document.querySelectorAll("#tabla thead input").forEach(inp => {
+      filtrosActuales[inp.dataset.col] = inp.value;
+    });
+
+    let html = "<thead><tr>";
+
+    columnas.forEach(c=>{
+      const valorFiltro = filtrosActuales[c] ?? "";
+      html += `
+        <th>
+          <div class="th-title">${c}</div>
+          <input type="text" data-col="${c}" onkeyup="filtrar()" placeholder="Filtrar" value="${escapeHtml(valorFiltro)}">
+        </th>
+      `;
+    });
+
+    html += `<th><div class="th-title">Editar</div></th>`;
+    html += "</tr></thead><tbody>";
+
+    rows.forEach((r)=>{
+      const isSelected = Number(r.IDV) === Number(selectedID);
+      const colorClass = getRowColorClass(r);
+      html += `<tr class="${isSelected ? 'selected' : colorClass}" onclick="selectRow(${Number(r.IDV)}, this)">`;
+
+      columnas.forEach(c=>{
+        html += `<td>${escapeHtml(r[c] ?? "")}</td>`;
+      });
+
+      html += `<td class="center">✔</td>`;
+      html += "</tr>";
+    });
+
+    html += "</tbody>";
+    t.innerHTML = html;
+  }
+
+  function escapeHtml(value){
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function selectRow(id, tr){
+    selectedID = Number(id);
+    document.querySelectorAll("#tabla tbody tr").forEach(x=>x.classList.remove("selected"));
+    tr.classList.add("selected");
+  }
+
+  function filtrar(){
+    const inputs = document.querySelectorAll("#tabla thead input");
+
+    filteredData = data.filter(row=>{
+      return [...inputs].every(inp=>{
+        const col = inp.dataset.col;
+        const val = String(inp.value || "").trim().toLowerCase();
+        if(!val) return true;
+        return String(row[col] ?? "").toLowerCase().includes(val);
+      });
+    });
+
+    currentPage = 1;
+    renderTablaPaginada();
+  }
+
+  function limpiarFiltros(){
+    filteredData = [...data];
+    currentPage = 1;
+    renderTablaPaginada();
+  }
+
+  function cambiarRowsPerPage(){
+    rowsPerPage = Number(document.getElementById("rowsPerPageSelect").value) || 10;
+    currentPage = 1;
+    renderTablaPaginada();
+  }
+
+  function irPrimeraPagina(){
+    currentPage = 1;
+    renderTablaPaginada();
+  }
+
+  function irPaginaAnterior(){
+    if(currentPage > 1){
+      currentPage--;
+      renderTablaPaginada();
+    }
+  }
+
+  function irPaginaSiguiente(){
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / rowsPerPage));
+    if(currentPage < totalPages){
+      currentPage++;
+      renderTablaPaginada();
+    }
+  }
+
+  function irUltimaPagina(){
+    currentPage = Math.max(1, Math.ceil(filteredData.length / rowsPerPage));
+    renderTablaPaginada();
+  }
+
+  function editarSeleccion(){
+    if(selectedID == null){
+      alert("Selecciona una vacante.");
+      return;
+    }
+
+    const r = data.find(x => Number(x.IDV) === Number(selectedID));
+    if(!r){
+      alert("No se encontró el registro.");
+      return;
+    }
+
+    modoEdicion = true;
+    document.getElementById("tituloFormVacante").textContent = "Editar Vacante";
+
+    mostrarSeccion("formVacante");
+
+    columnas.forEach(k=>{
+      const el = document.getElementById(k);
+      if(el){
+        el.value = r[k] ?? "";
+      }
+    });
+
+    document.getElementById("STATUS").disabled = false;
+    recalcularCamposEnPantalla();
+  }
+
+  function mostrarCatalogos(){
+    mostrarSeccion("catalogos");
+    cargarCatalogoVista();
+  }
+
+  function cargarCatalogoVista(){
+    const tipo = document.getElementById("catalogSelect").value;
+    const lista = catalogs[tipo] || [];
+    const cont = document.getElementById("listaCatalogo");
+
+    if(lista.length === 0){
+      cont.innerHTML = `<div class="subtle">No hay valores en este catálogo.</div>`;
+      return;
+    }
+
+    cont.innerHTML = lista.map((item, i)=>`
+      <div class="catalog-item">
+        <div class="name">${escapeHtml(item.Name)}</div>
+        <div class="row-actions">
+          <button class="btn btn-soft" onclick="editarCat(${i})">✏️ Editar</button>
+          <button class="btn btn-danger" onclick="delCat(${i})">Eliminar</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function agregarCatalogo(){
+    const tipo = document.getElementById("catalogSelect").value;
+    const valor = String(document.getElementById("nuevoValor").value || "").trim();
+
+    if(!valor){
+      alert("Escribe un valor.");
+      return;
+    }
+
+    const lista = catalogs[tipo] || [];
+    const existe = lista.some(x => String(x.Name).trim().toUpperCase() === valor.toUpperCase());
+
+    if(existe){
+      alert("Ese valor ya existe en el catálogo.");
+      return;
+    }
+
+    const nuevoID = lista.length > 0
+      ? Math.max(...lista.map(x => Number(x.ID) || 0)) + 1
+      : 1;
+
+    lista.push({ ID: nuevoID, Name: valor });
+    catalogs[tipo] = lista;
+    document.getElementById("nuevoValor").value = "";
+
+    cargarCatalogoVista();
+    refrescarCombos();
+  }
+
+  function editarCat(i){
+    const tipo = document.getElementById("catalogSelect").value;
+    const actual = catalogs[tipo][i];
+    const nuevo = prompt("Editar valor", actual.Name);
+
+    if(nuevo === null) return;
+
+    const limpio = String(nuevo).trim();
+    if(!limpio){
+      alert("El valor no puede quedar vacío.");
+      return;
+    }
+
+    catalogs[tipo][i].Name = limpio;
+    cargarCatalogoVista();
+    refrescarCombos();
+  }
+
+  function delCat(i){
+    const tipo = document.getElementById("catalogSelect").value;
+
+    if(!confirm("¿Eliminar este valor del catálogo?")) return;
+
+    catalogs[tipo].splice(i, 1);
+    cargarCatalogoVista();
+    refrescarCombos();
+  }
+
+  function refrescarCombos(){
+    Object.keys(catalogSheetMap).forEach(field => {
+      cargarSelect(field);
+    });
+  }
+
+  function volverMenu(){
+    modoEdicion = false;
+    selectedID = null;
+    mostrarSeccion("menu");
+  }
+
+  function descargar(){
+    const wb = XLSX.utils.book_new();
+
+    const dataExport = data.map(row=>{
+      const ordered = {};
+      columnas.forEach(col => {
+        ordered[col] = row[col] ?? "";
+      });
+      return ordered;
+    });
+
+    const wsData = XLSX.utils.json_to_sheet(dataExport, { header: columnas });
+    XLSX.utils.book_append_sheet(wb, wsData, "BD_Vacancies");
+
+    Object.entries(catalogSheetMap).forEach(([field, sheetName])=>{
+      const lista = (catalogs[field] || []).map(item => ({
+        ID: item.ID ?? "",
+        Name: item.Name ?? ""
+      }));
+      const wsCat = XLSX.utils.json_to_sheet(lista, { header: ["ID","Name"] });
+      XLSX.utils.book_append_sheet(wb, wsCat, sheetName);
+    });
+
+    XLSX.writeFile(wb, "RH_Actualizado.xlsx");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    ["FECHA_INICIO","FECHA_CIERRE","STATUS"].forEach(id => {
+      document.addEventListener("input", (e) => {
+        if (e.target && e.target.id === id) recalcularCamposEnPantalla();
+      });
+      document.addEventListener("change", (e) => {
+        if (e.target && e.target.id === id) recalcularCamposEnPantalla();
+      });
+    });
+  });
+</script>
+</body>
+</html>
